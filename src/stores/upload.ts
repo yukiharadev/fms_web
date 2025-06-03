@@ -110,7 +110,7 @@ const useUploadStore = defineStore('upload', {
     isLoading: (state) => state.loading,
     getError: (state) => state.error,
     deleteUploadSuccess: (state) => state.deleteUpload,
-    getURLFromKey: (state) => state.upload,
+    getURLFromKey: (state) => state.getURL,
   },
 })
 

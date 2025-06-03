@@ -20,10 +20,15 @@
         </v-form>
       </v-card-text>
       <v-card-actions>
-        <v-btn :disabled="!valid" :loading="isSubmitting" @click="handleSubmit" color="primary"
+        <v-btn
+          :disabled="!valid"
+          variant="tonal"
+          :loading="isSubmitting"
+          @click="handleSubmit"
+          color="primary"
           >Lưu</v-btn
         >
-        <v-btn @click="closeDrawer" color="grey">Hủy</v-btn>
+        <v-btn @click="closeDrawer" variant="tonal" color="error">Hủy</v-btn>
       </v-card-actions>
     </v-card>
   </v-navigation-drawer>

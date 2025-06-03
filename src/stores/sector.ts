@@ -8,6 +8,7 @@ interface SectorState {
   sectorPercentage: SectorPercentageResponse[] | null
   createSector: boolean
   deleteSector: boolean
+  updateSector: boolean
   loading: boolean
   error: string | null
 }
@@ -18,6 +19,7 @@ const useSectorStore = defineStore('sector', {
     deleteSector: false,
     sector: null,
     sectorPercentage: null,
+    updateSector: false,
     loading: false,
     error: null,
   }),
@@ -28,6 +30,7 @@ const useSectorStore = defineStore('sector', {
     getPercentage: (state) => state.sectorPercentage,
     createSectorSuccess: (state) => state.createSector,
     deleteSectorSuccess: (state) => state.deleteSector,
+    updateSectorSuccess: (state) => state.updateSector,
   },
 
   actions: {
@@ -92,6 +95,22 @@ const useSectorStore = defineStore('sector', {
           throw new Error('Failed to delete business sector')
         }
       } catch (error) {}
+    },
+
+    async updateBusinessSector(data: { id: string; name: string }) {
+      this.loading = true
+      this.error = null
+
+      try {
+        const response = await api.patch(Constants.API_CREATE_BUSINESS_SECTOR, data)
+        if (response.status === 200) {
+          this.updateSector = true
+        } else {
+          throw new Error('Failed to update business sector')
+        }
+      } catch (error) {
+        this.error = 'Failed to update business sector'
+      }
     },
   },
 })

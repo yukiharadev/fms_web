@@ -8,7 +8,7 @@
             <v-img
               class="mb-4 justify-center rounded-lg shadow-md bg-white object-contain"
               width="300"
-              :src="company?.company.logoUrl ?? 'https://placehold.co/350x350?text=Logo'"
+              :src="avatarLogoUrl"
             ></v-img>
           </v-col>
           <v-col>
@@ -157,9 +157,14 @@ import { useRouter } from 'vue-router'
 import { onMounted, ref, computed, watch } from 'vue'
 import CompanyStore from '@/stores/company'
 import type { FlattenedLeadership, CompanyLeadershipResponse } from '@/types/company'
+import { isValidURL } from '@/utils/middlewares'
+import UploadStore from '@/stores/upload'
 
 const router = useRouter()
 const companyStore = CompanyStore()
+const uploadStore = UploadStore()
+
+const avatarLogoUrl = ref<string>()
 
 const symbol = ref<string>(
   Array.isArray(router.currentRoute.value.params.symbol)
@@ -168,6 +173,20 @@ const symbol = ref<string>(
 )
 
 const company = computed(() => companyStore.getCompanyDetail)
+
+const companyAvatarUrl = async (avatarUrl: string | null | undefined) => {
+  if (!avatarUrl) return 'https://placehold.co/350x350?text=Logo'
+  console.log('Avatar URL:', avatarUrl)
+  if (isValidURL(avatarUrl)) {
+    avatarLogoUrl.value = avatarUrl
+  } else {
+    await uploadStore.URLFromKey(avatarUrl)
+    avatarLogoUrl.value =
+      uploadStore.getURLFromKey?.fullSize ?? 'https://placehold.co/350x350?text=Logo'
+  }
+  return avatarLogoUrl.value
+}
+
 const leadership = computed(() => companyStore.getLeadership)
 
 const getLeadership = async (companyId: string) => {
@@ -201,12 +220,12 @@ const getCompanyDetail = async () => {
 }
 
 onMounted(async () => {
-  console.log('Symbol:', symbol.value)
   await getCompanyDetail()
+  if (company.value?.company.logoUrl) {
+    await companyAvatarUrl(company.value.company.logoUrl)
+  }
   if (company.value?.company.id) {
     await getLeadership(company.value.company.id)
-    console.log('Leadership after fetch:', leadership.value)
-    console.log('LeadershipData after fetch:', leadershipData.value)
   }
 })
 

@@ -26,6 +26,7 @@
                 color="primary"
                 variant="tonal"
                 size="small"
+                @click="editSector(sector)"
               >
                 <EditIcon size="20" stroke-width="1.5" />
               </v-btn>
@@ -57,6 +58,7 @@
       @close="drawer = false"
       @create:sector="handleCreateSector"
     />
+
     <v-snackbar location="top right" v-model="snackbar.show" :color="snackbar.color" timeout="3000">
       <div class="d-flex align-center">
         <InfoCircleIcon class="mr-1" />
@@ -64,20 +66,37 @@
       </div>
     </v-snackbar>
   </v-card>
+  <v-dialog v-model="editSectorDialog" width="500" persistent>
+    <v-card>
+      <v-card-title>Chỉnh sửa lĩnh vực</v-card-title>
+      <v-card-text>
+        <v-text-field v-model="formData.name" label="Tên lĩnh vực" />
+      </v-card-text>
+      <v-card-actions>
+        <v-btn color="primary" @click="saveEditSector">Lưu</v-btn>
+        <v-btn color="error" @click="editSectorDialog = false">Hủy</v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, reactive } from 'vue'
 import AddSectorDrawer from '@/components/business_sector/add_sector_drawer.vue'
-import { InfoCircleIcon } from 'vue-tabler-icons'
-import type { SectorsResponse } from '@/types/sectors'
+import { InfoCircleIcon, EditIcon, TrashIcon } from 'vue-tabler-icons'
+import type { Sector, SectorsResponse } from '@/types/sectors'
 import useSectorStore from '@/stores/sector'
 
 const sectors = ref<SectorsResponse['value']>([])
 const sectorsStore = useSectorStore()
-
+const editSectorDialog = ref(false)
 const currentPage = ref(1)
 const itemsPerPage = 10
+
+const formData = reactive({
+  id: '',
+  name: '',
+})
 
 const paginatedSectors = computed(() => {
   const start = (currentPage.value - 1) * itemsPerPage
@@ -88,6 +107,7 @@ const paginatedSectors = computed(() => {
 const fetchAllSectors = async () => {
   await sectorsStore.getAllSectors()
   sectors.value = sectorsStore.sector?.value || []
+  sectors.value.sort((a, b) => a.name.localeCompare(b.name, 'vi', { sensitivity: 'base' }))
 }
 
 const totalPages = computed(() => {
@@ -97,9 +117,14 @@ const totalPages = computed(() => {
 const deleteSector = async (id: string) => {
   await sectorsStore.deleteBusinessSector(id)
   if (sectorsStore.deleteSectorSuccess) {
-    fetchAllSectors()
+    await fetchAllSectors()
     snackbar.value.show = true
     snackbar.value.message = 'Xóa lĩnh vực thành công'
+    snackbar.value.color = 'success'
+  } else {
+    snackbar.value.show = true
+    snackbar.value.message = 'Xóa lĩnh vực thất bại'
+    snackbar.value.color = 'error'
   }
 }
 
@@ -107,8 +132,6 @@ onMounted(async () => {
   await fetchAllSectors()
   console.log('Sectors:', sectors.value)
 })
-
-watch(currentPage, fetchAllSectors)
 
 const drawer = ref(false)
 
@@ -122,15 +145,42 @@ const openAddSectorDrawer = () => {
   drawer.value = true
 }
 
-const handleCreateSector = () => {
-  fetchAllSectors()
+const handleCreateSector = async () => {
+  await fetchAllSectors()
   if (sectorsStore.createSectorSuccess) {
     sectors.value = sectorsStore.sector?.value || []
+    sectors.value.sort((a, b) => a.name.localeCompare(b.name, 'vi', { sensitivity: 'base' }))
     snackbar.value.show = true
     snackbar.value.message = 'Thêm lĩnh vực thành công'
     snackbar.value.color = 'success'
+  } else {
+    snackbar.value.show = true
+    snackbar.value.message = 'Thêm lĩnh vực thất bại'
+    snackbar.value.color = 'error'
+  }
+}
+
+const editSector = (sector: Sector) => {
+  formData.id = sector.id
+  formData.name = sector.name
+  editSectorDialog.value = true
+}
+
+const saveEditSector = async () => {
+  await sectorsStore.updateBusinessSector({
+    id: formData.id,
+    name: formData.name,
+  })
+  if (sectorsStore.updateSectorSuccess) {
+    await fetchAllSectors()
+    snackbar.value.show = true
+    snackbar.value.message = 'Cập nhật lĩnh vực thành công'
+    snackbar.value.color = 'success'
+    editSectorDialog.value = false
+  } else {
+    snackbar.value.show = true
+    snackbar.value.message = 'Cập nhật lĩnh vực thất bại'
+    snackbar.value.color = 'error'
   }
 }
 </script>
-
-<style scoped></style>
