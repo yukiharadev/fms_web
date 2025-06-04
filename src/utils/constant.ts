@@ -55,6 +55,10 @@ class Constants {
   static readonly API_UPLOAD_FROM_LOCAL = '/upload-service/upload/locals/single-file'
 
   //MAIL ENDPOINTS
+
+  //POSITION ENDPOINTS
+  static readonly API_POSITION_CREATE = '/company-service/positions'
+  static readonly API_GET_COMPANY_POSITION = '/company-service/positions/get-by-company/'
 }
 
 export default Constants

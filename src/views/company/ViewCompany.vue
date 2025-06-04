@@ -101,7 +101,24 @@
             auto-grow
           ></v-textarea>
         </v-col>
-
+        <v-col>
+          <div class="d-flex justify-space-between">
+            <v-card-title class="text-2xl italic font-bold">Danh sách chức vụ</v-card-title>
+            <v-btn color="primary" variant="tonal" @click="addPositionDialog = true" size="small"
+              >Thêm chức vụ</v-btn
+            >
+          </div>
+          <v-table>
+            <thead class="bg-primary text-white">
+              <tr>
+                <th class="text-subtitle-1 font-weight-bold">STT</th>
+                <th class="text-subtitle-1 font-weight-bold">Phòng ban</th>
+                <th class="text-subtitle-1 font-weight-bold">Chức vụ</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </v-table>
+        </v-col>
         <v-col>
           <v-card-title class="text-2xl italic font-bold">Danh sách lãnh đạo</v-card-title>
           <v-table>
@@ -150,39 +167,92 @@
       </v-card-text>
     </v-card>
   </v-card>
+
+  <v-dialog v-model="addPositionDialog" width="500" persistent>
+    <v-card>
+      <v-card-title>Thêm chức vụ</v-card-title>
+      <v-card-text>
+        <v-select
+          v-model="selectedDepartment"
+          :items="
+            Object.entries(departmentsMap).map(([key, value]) => ({
+              value: Number(key),
+              title: value,
+            }))
+          "
+          item-title="title"
+          item-value="value"
+          label="Phòng ban"
+          color="primary"
+          outlined
+        />
+        <v-text-field v-model="positionName" label="Tên chức vụ" color="primary" outlined />
+      </v-card-text>
+      <v-card-actions>
+        <v-btn color="primary" variant="tonal" @click="createPosition">Thêm</v-btn>
+        <v-btn color="error" variant="tonal" @click="addPositionDialog = false">Hủy</v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
 </template>
 
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
-import { onMounted, ref, computed, watch } from 'vue'
+import { onMounted, ref, computed, defineProps } from 'vue'
 import CompanyStore from '@/stores/company'
 import type { FlattenedLeadership, CompanyLeadershipResponse } from '@/types/company'
 import { isValidURL } from '@/utils/middlewares'
 import UploadStore from '@/stores/upload'
+import { EyeIcon, EditIcon, TrashIcon } from 'vue-tabler-icons'
+
+const props = defineProps<{
+  symbol?: string
+}>()
 
 const router = useRouter()
 const companyStore = CompanyStore()
 const uploadStore = UploadStore()
 
-const avatarLogoUrl = ref<string>()
+const avatarLogoUrl = ref<string>('https://placehold.co/350x350?text=Logo')
+const addPositionDialog = ref<boolean>(false)
+const selectedDepartment = ref<SelectedDepartmentKey>(1)
+const positionName = ref<string>('')
+
+const departmentsMap = {
+  1: 'Hội đồng quản trị',
+  2: 'Ban giám đốc/Kế toán trưởng',
+  3: 'Ban kiểm toán',
+  4: 'Khác',
+} as const
+
+type SelectedDepartmentKey = keyof typeof departmentsMap
 
 const symbol = ref<string>(
-  Array.isArray(router.currentRoute.value.params.symbol)
-    ? router.currentRoute.value.params.symbol[0]
-    : router.currentRoute.value.params.symbol || '',
+  props.symbol ||
+    (Array.isArray(router.currentRoute.value.params.symbol)
+      ? router.currentRoute.value.params.symbol[0]
+      : router.currentRoute.value.params.symbol || ''),
 )
 
 const company = computed(() => companyStore.getCompanyDetail)
 
 const companyAvatarUrl = async (avatarUrl: string | null | undefined) => {
-  if (!avatarUrl) return 'https://placehold.co/350x350?text=Logo'
-  console.log('Avatar URL:', avatarUrl)
+  const fallbackUrl = 'https://placehold.co/350x350?text=Logo'
+  if (!avatarUrl) {
+    avatarLogoUrl.value = fallbackUrl
+    return avatarLogoUrl.value
+  }
+
   if (isValidURL(avatarUrl)) {
     avatarLogoUrl.value = avatarUrl
   } else {
-    await uploadStore.URLFromKey(avatarUrl)
-    avatarLogoUrl.value =
-      uploadStore.getURLFromKey?.fullSize ?? 'https://placehold.co/350x350?text=Logo'
+    try {
+      await uploadStore.URLFromKey(avatarUrl)
+      avatarLogoUrl.value = uploadStore.getURLFromKey?.fullSize ?? fallbackUrl
+    } catch (error) {
+      console.error('Error fetching URL from UploadStore:', error)
+      avatarLogoUrl.value = fallbackUrl
+    }
   }
   return avatarLogoUrl.value
 }
@@ -197,12 +267,16 @@ const getLeadership = async (companyId: string) => {
   }
 }
 
+const createPosition = async () => {
+  addPositionDialog.value = false
+  positionName.value = ''
+  selectedDepartment.value = 1
+}
+
 const handleViewPersonDetail = (personId: string) => {
   router.push({
     name: 'person-detail',
-    params: {
-      id: personId,
-    },
+    params: { id: personId },
   })
 }
 
@@ -223,14 +297,13 @@ onMounted(async () => {
   await getCompanyDetail()
   if (company.value?.company.logoUrl) {
     await companyAvatarUrl(company.value.company.logoUrl)
+  } else {
+    console.warn('No logo URL found for company')
+    avatarLogoUrl.value = 'https://placehold.co/350x350?text=Logo'
   }
   if (company.value?.company.id) {
     await getLeadership(company.value.company.id)
   }
-})
-
-watch(leadership, (newVal) => {
-  console.log('Leadership updated:', newVal)
 })
 
 const departmentMap = {
