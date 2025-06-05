@@ -22,7 +22,7 @@
                 <v-text-field
                   color="primary"
                   outlined
-                  :value="person?.birthDate ?? 'Không có dữ liệu'"
+                  :value="person?.birthDay ?? 'Không có dữ liệu'"
                   readonly
                 />
               </v-col>

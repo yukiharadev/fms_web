@@ -71,7 +71,7 @@ type FlattenedLeadership = {
 type PersonRespone = {
   id: string | object
   fullName: string
-  birthDate: string | null
+  birthDay: string | null
   avatarUrl: string | null
   address: string | null
   residence: string | null

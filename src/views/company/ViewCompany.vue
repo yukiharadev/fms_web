@@ -114,9 +114,40 @@
                 <th class="text-subtitle-1 font-weight-bold">STT</th>
                 <th class="text-subtitle-1 font-weight-bold">Phòng ban</th>
                 <th class="text-subtitle-1 font-weight-bold">Chức vụ</th>
+                <th class="text-subtitle-1 font-weight-bold text-center">Hành động</th>
               </tr>
             </thead>
-            <tbody></tbody>
+            <tbody>
+              <tr v-for="(item, index) in positionList" :key="item.id">
+                <td class="text-subtitle-1">{{ index + 1 }}</td>
+                <td class="text-subtitle-1">
+                  {{ departmentMap[item.department as DepartmentKey] ?? item.department }}
+                </td>
+                <td class="text-subtitle-1">{{ item.name }}</td>
+                <td class="text-center">
+                  <v-btn
+                    class="text-h6 text-right mr-2"
+                    color="primary"
+                    variant="tonal"
+                    size="small"
+                  >
+                    <EditIcon size="20" stroke-width="1.5" />
+                  </v-btn>
+                  <v-btn
+                    class="text-h6 text-right mr-2"
+                    @click="handleDeletePosition(item.id)"
+                    color="error"
+                    variant="tonal"
+                    size="small"
+                  >
+                    <TrashIcon size="20" stroke-width="1.5" />
+                  </v-btn>
+                </td>
+              </tr>
+              <tr v-if="!positionList || positionList.length === 0">
+                <td colspan="4" class="text-center italic">Chưa có dữ liệu chức vụ</td>
+              </tr>
+            </tbody>
           </v-table>
         </v-col>
         <v-col>
@@ -194,6 +225,13 @@
       </v-card-actions>
     </v-card>
   </v-dialog>
+
+  <v-snackbar location="top right" v-model="snackbar.show" :color="snackbar.color" timeout="3000">
+    <div class="d-flex align-center">
+      <InfoCircleIcon class="mr-1" />
+      {{ snackbar.message }}
+    </div>
+  </v-snackbar>
 </template>
 
 <script setup lang="ts">
@@ -203,7 +241,8 @@ import CompanyStore from '@/stores/company'
 import type { FlattenedLeadership, CompanyLeadershipResponse } from '@/types/company'
 import { isValidURL } from '@/utils/middlewares'
 import UploadStore from '@/stores/upload'
-import { EyeIcon, EditIcon, TrashIcon } from 'vue-tabler-icons'
+import { EyeIcon, EditIcon, TrashIcon, InfoCircleIcon } from 'vue-tabler-icons'
+import PositionStore from '@/stores/position'
 
 const props = defineProps<{
   symbol?: string
@@ -212,11 +251,19 @@ const props = defineProps<{
 const router = useRouter()
 const companyStore = CompanyStore()
 const uploadStore = UploadStore()
+const positionStore = PositionStore()
 
 const avatarLogoUrl = ref<string>('https://placehold.co/350x350?text=Logo')
 const addPositionDialog = ref<boolean>(false)
 const selectedDepartment = ref<SelectedDepartmentKey>(1)
 const positionName = ref<string>('')
+const positionList = computed(() => positionStore.positionList)
+
+const snackbar = ref({
+  show: false,
+  message: '',
+  color: 'success',
+})
 
 const departmentsMap = {
   1: 'Hội đồng quản trị',
@@ -250,7 +297,6 @@ const companyAvatarUrl = async (avatarUrl: string | null | undefined) => {
       await uploadStore.URLFromKey(avatarUrl)
       avatarLogoUrl.value = uploadStore.getURLFromKey?.fullSize ?? fallbackUrl
     } catch (error) {
-      console.error('Error fetching URL from UploadStore:', error)
       avatarLogoUrl.value = fallbackUrl
     }
   }
@@ -263,11 +309,35 @@ const getLeadership = async (companyId: string) => {
   try {
     await companyStore.getCompanyLeadership(companyId)
   } catch (error) {
-    console.error('Error fetching company leadership:', error)
+    throw error
+  }
+}
+
+const getPosition = async (companyId: string) => {
+  try {
+    await positionStore.getPositionAction(companyId)
+  } catch (error) {
+    throw error
   }
 }
 
 const createPosition = async () => {
+  try {
+    await positionStore.createPositionAction({
+      companyId: company.value?.company.id ?? '',
+      name: positionName.value,
+      department: selectedDepartment.value,
+    })
+    await getPosition(company.value?.company.id ?? '')
+    snackbar.value.show = true
+    snackbar.value.message = 'Thêm chức vụ thành công'
+    snackbar.value.color = 'success'
+  } catch (error) {
+    snackbar.value.show = true
+    snackbar.value.message = 'Thêm chức vụ thất bại'
+    snackbar.value.color = 'error'
+  }
+
   addPositionDialog.value = false
   positionName.value = ''
   selectedDepartment.value = 1
@@ -282,14 +352,13 @@ const handleViewPersonDetail = (personId: string) => {
 
 const getCompanyDetail = async () => {
   if (!symbol.value) {
-    console.error('Symbol is empty')
     return
   }
 
   try {
     await companyStore.getCompanyDetailBySymbol(symbol.value)
   } catch (error) {
-    console.error('Error fetching company detail:', error)
+    throw error
   }
 }
 
@@ -298,13 +367,29 @@ onMounted(async () => {
   if (company.value?.company.logoUrl) {
     await companyAvatarUrl(company.value.company.logoUrl)
   } else {
-    console.warn('No logo URL found for company')
     avatarLogoUrl.value = 'https://placehold.co/350x350?text=Logo'
   }
   if (company.value?.company.id) {
     await getLeadership(company.value.company.id)
   }
+  if (company.value?.company.id) {
+    await getPosition(company.value.company.id)
+  }
 })
+
+const handleDeletePosition = async (positionId: string) => {
+  try {
+    await positionStore.deletePositionAction(positionId)
+    await getPosition(company.value?.company.id ?? '')
+    snackbar.value.show = true
+    snackbar.value.message = 'Xóa chức vụ thành công'
+    snackbar.value.color = 'success'
+  } catch (error) {
+    snackbar.value.show = true
+    snackbar.value.message = 'Xóa chức vụ thất bại'
+    snackbar.value.color = 'error'
+  }
+}
 
 const departmentMap = {
   BoardOfDirectors: 'Hội đồng quản trị',
@@ -321,13 +406,11 @@ const leadershipData = computed(() => {
 
   return rawData.reduce((acc: FlattenedLeadership[], department: CompanyLeadershipResponse) => {
     if (!department.positions || !Array.isArray(department.positions)) {
-      console.warn('Department missing positions:', department)
       return acc
     }
 
     department.positions.forEach((posi) => {
       if (!posi.employees || !Array.isArray(posi.employees)) {
-        console.warn('Position missing employees:', posi)
         return
       }
 

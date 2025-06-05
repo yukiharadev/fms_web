@@ -11,7 +11,7 @@
       <h4 class="text-xl md:text-2xl my-8 text-gray-600">
         This page you are looking for could not be found.
       </h4>
-      <v-btn flat color="primary" class="mb-4" to="/">Go Back to Home</v-btn>
+      <v-btn flat color="primary" class="mb-4 hover:text-white-500" to="/">Go Back to Home</v-btn>
     </div>
   </div>
 </template>

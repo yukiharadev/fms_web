@@ -41,6 +41,8 @@ class Constants {
 
   // PERSON ENDPOINTS
   static readonly API_CEO_GET_PAGINATION = '/company-service/persons/get-page'
+  static readonly API_CEO_SEARCH = '/company-service/persons/search/'
+  static readonly API_CEO_ADD = '/company-service/persons'
 
   // EMPLOYEES ENDPOINTS
 
